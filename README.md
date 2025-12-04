@@ -2,7 +2,7 @@
 [![Open in Visual Studio Code](https://classroom.github.com/assets/open-in-vscode-2e0aaae1b6195c2367325f4f02e2d04e9abb55f0b24a779b69b11b9e10269abc.svg)](https://classroom.github.com/online_ide?assignment_repo_id=21940648&assignment_repo_type=AssignmentRepo)
 # Title of your paper
 ### Members
-* name, student ID1
+* 吳帛恩, 112207433
 * name, student ID2
 * name, student ID3
 * ...
@@ -17,7 +17,7 @@ Rscript code/your_script.R --input data/training --output results/performance.ts
 idea by Noble WS (2009) [A Quick Guide to Organizing Computational Biology Projects.](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1000424) PLoS Comput Biol 5(7): e1000424.
 
 ### docs
-* Your presentation, 1131_bioinformatics_FP_groupID.ppt/pptx/pdf (i.e.,1131_bioinformatics_FP_group1.ppt), by **01.02 9:20 am**
+* Your presentation, 1141_bioinformatics_FP_groupID.ppt/pptx/pdf (i.e.,1131_bioinformatics_FP_group1.ppt), by **01.02 9:20 am**
 * Any related document for the project
   * i.e., software user guide
 
