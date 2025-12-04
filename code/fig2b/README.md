@@ -35,7 +35,7 @@ python extract_bithorax_gcmap.py \
   --out RAS3_dm6_bithorax_5kb.csv
 ```
 
-*Note: This step has already been performed for you. The resulting `.csv` files are included in data/fig2b.*
+*Note: This step has already been performed for you. The resulting `.csv` files are included in results/fig2b.*
 
 ## 3. Visualization (CSV to Figure)
 
