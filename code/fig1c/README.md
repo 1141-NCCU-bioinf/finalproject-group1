@@ -72,7 +72,7 @@ Create and run the Python script `final_fig1c_normalized.py`. This script handle
 
 **Command:**
 ```bash
-python final_fig1c_5samples.py
+python final_fig1c_normalized.py
 ```
 
 **Key Python Code Logic:**
