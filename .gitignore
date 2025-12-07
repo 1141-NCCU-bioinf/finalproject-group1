@@ -1,1 +1,12 @@
 .DS_Store
+
+# 忽略所有 gcmap 檔案
+*.gcmap
+*.gcmap.gz
+
+# 忽略解壓縮後的暫存檔
+*.tmp
+
+# 忽略 Python 快取
+__pycache__/
+*.pyc
