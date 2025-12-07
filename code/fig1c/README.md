@@ -65,7 +65,6 @@ print(np.corrcoef(d1.flatten(), d2.flatten())[0,1])
 
 **Result:** The correlation was **>0.996**, confirming that the file labeled `GSM5956403` (Control Rep2) was identical to `GSM5956407` (CTCF Rep2). This suggests a potential data submission error or a download mishap.
 
-**Solution:** To ensure scientific accuracy, **Control Rep2 was excluded** from the final figure. The analysis proceeded with the remaining 5 validated samples.
 
 ### Step 3: Run the Analysis Script
 Create and run the Python script `final_fig1c_normalized.py`. This script handles normalization, O/E transformation, and plotting.
@@ -109,4 +108,4 @@ The resulting dendrogram correctly shows:
 4.  The separation between Control and KO conditions is clearly visible, consistent with the findings in Kahn et al. (2023).
 
 ## 5. Output
-The script generates a file named `Fig1C_Final_Normalized.png`, which is the reproduced dendrogram.
+The script generates a file named `/results/fig1c/Fig1C_Final_Normalized.png`, which is the reproduced dendrogram.
