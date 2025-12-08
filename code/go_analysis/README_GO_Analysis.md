@@ -69,7 +69,7 @@ hits <- findOverlaps(bg, gene_regions, ignore.strand=TRUE)
 counts <- countSubjectHits(hits)
 ```
 
-**Output**: `reconstructed_counts.csv`
+**Output**: `data/go_analysis/reconstructed_counts.csv`
 
 ### Step 3: Run GO Enrichment Analysis
 Once the count matrix is ready, run the specific analysis scripts for Cp190 and CTCF. These scripts handle DESeq2, filtering, and visualization.
@@ -105,3 +105,4 @@ Rscript GO_analysis_CTCF.R
 The analysis generated two visualization plots:
 - `GO_Enrichment_Cp190_v2.png`: Shows that Cp190 loss significantly affects **ion transport** and **sensory perception** pathways.
 - `GO_Enrichment_CTCF_v2.png`: Shows that CTCF loss impacts developmental and signaling pathways, with distinct differences from Cp190.
+- `GO_Enrichment_Cp190.png`: The Enrichment plot before adjusting y-axis height.
