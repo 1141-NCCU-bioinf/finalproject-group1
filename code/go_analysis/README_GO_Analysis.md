@@ -55,10 +55,10 @@ Since the provided raw data were BED files (genomic coordinates of mapped reads)
 Download the `GSE198761_RAW.tar` from GEO and extract it into your working directory (e.g., `rna/`). Ensure all `.bed.gz` files are present.
 
 ### Step 2: Reconstruct Count Matrix
-Run the `analysis.R` script to generate the count matrix from raw BED files.
+Run the `GO_analysis_Cp190.R` script to generate the count matrix from raw BED files.
 
 ```bash
-Rscript analysis.R
+Rscript GO_analysis_Cp190.R
 ```
 
 **Key Code Snippet (Count Reconstruction):**
