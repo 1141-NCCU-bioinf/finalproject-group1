@@ -104,39 +104,52 @@ def extract_crossing_curve(filename, sites):
 # ==========================================
 # 4. 標準化 (背景歸零)
 # ==========================================
-def normalize_and_subtract_raw(mutant_curve, control_curve, mutant_ref_random, control_ref_random):
+# fig6b.py (Line 131)
+def calculate_normalized_difference(mutant_curve, control_curve, mutant_random_ref, control_random_ref):
     """
-    計算原始差異值 (未縮放)，但在計算前先用隨機區域將 Mutant 與 Control 對齊
+    利用隨機區域 (Random/Background) 計算校正因子，
+    確保背景差異歸零後，再計算絕緣子的真實差異。
     """
-    sum_mut_rnd = np.sum(mutant_ref_random)
-    sum_ctl_rnd = np.sum(control_ref_random)
+    # 1. 計算隨機區域的總訊號量 (Total Signal in Background)
+    sum_mut_rnd = np.sum(mutant_random_ref)
+    sum_ctl_rnd = np.sum(control_random_ref)
     
-    if sum_mut_rnd == 0: return np.zeros_like(mutant_curve)
+    if sum_ctl_rnd == 0: return np.zeros_like(mutant_curve)
     
-    # 1. 計算背景校正係數
-    bg_scale_factor = sum_ctl_rnd / sum_mut_rnd
+    # 2. 計算校正因子 (Scaling Factor)
+    # 目標: 讓 Control 的背景強度 = Mutant 的背景強度
+    # 公式: Control_Normalized = Control_Raw * (Sum_Mutant / Sum_Control)
+    scale_factor = sum_mut_rnd / sum_ctl_rnd
     
-    # 2. 校正 Mutant 強度
-    mutant_curve_norm = mutant_curve * bg_scale_factor
+    print(f"   [System Check] Normalization Factor: {scale_factor:.4f}")
+    if scale_factor < 0.8 or scale_factor > 1.2:
+        print("   [Warning] 樣本間定序深度差異較大，校正因子偏離 1.0")
+
+    # 3. 對 Control 曲線進行校正
+    control_curve_norm = control_curve * scale_factor
     
-    # 3. 回傳原始差異 (Mutant_Corrected - Control)
-    return (mutant_curve_norm - control_curve)
+    # 4. 計算差異 (Mutant - Normalized Control)
+    raw_diff = mutant_curve - control_curve_norm
+    
+    return raw_diff
 
 # ==========================================
 # 5. 主程式
 # ==========================================
 if __name__ == "__main__":
-    # A. 準備座標
+    # A. 準備座標 (保持不變)
     insulator_sites = get_coords(CSV_INSULATOR)
     
     random_sites = []
     chrom_list = list(set([x[0] for x in insulator_sites]))
+    # 固定隨機腫子以確保結果可重現 (Optional)
+    random.seed(42) 
     for _ in range(len(insulator_sites)):
         c = random.choice(chrom_list)
         pos = random.randint(100000, 20000000)
         random_sites.append((c, pos))
     
-    # B. 提取數據
+    # B. 提取數據 (保持不變)
     print("\n--- 1. 讀取數據 ---")
     mut_ins_r1 = extract_crossing_curve(FILE_MUTANT_REP1, insulator_sites)
     ctl_ins_r1 = extract_crossing_curve(FILE_CONTROL_REP1, insulator_sites)
@@ -148,56 +161,69 @@ if __name__ == "__main__":
     mut_rnd_r2 = extract_crossing_curve(FILE_MUTANT_REP2, random_sites)
     ctl_rnd_r2 = extract_crossing_curve(FILE_CONTROL_REP2, random_sites)
     
-    # C. 計算原始差異 (Raw Difference)
-    print("\n--- 2. 計算差異與自動縮放 ---")
+    # C. 計算差異與最終縮放
+    print("\n--- 2. 執行背景標準化與最終縮放 ---")
+    
     if mut_ins_r1 is not None:
-        # 先算出還沒放大的差異值 (這時數值可能很小，例如 0.005)
-        raw_diff_ins_r1 = normalize_and_subtract_raw(mut_ins_r1, ctl_ins_r1, mut_rnd_r1, ctl_rnd_r1)
-        raw_diff_rnd_r1 = normalize_and_subtract_raw(mut_rnd_r1, ctl_rnd_r1, mut_rnd_r1, ctl_rnd_r1)
+        # 1. 先計算「背景標準化」後的原始差異 (Raw Normalized Difference)
+        # 這一步確保了形狀是正確的 (Control 接近 0, Insulator 有峰值)
+        diff_ins_r1 = calculate_normalized_difference(mut_ins_r1, ctl_ins_r1, mut_rnd_r1, ctl_rnd_r1)
+        diff_rnd_r1 = calculate_normalized_difference(mut_rnd_r1, ctl_rnd_r1, mut_rnd_r1, ctl_rnd_r1)
         
-        raw_diff_ins_r2 = normalize_and_subtract_raw(mut_ins_r2, ctl_ins_r2, mut_rnd_r2, ctl_rnd_r2)
-        raw_diff_rnd_r2 = normalize_and_subtract_raw(mut_rnd_r2, ctl_rnd_r2, mut_rnd_r2, ctl_rnd_r2)
+        diff_ins_r2 = calculate_normalized_difference(mut_ins_r2, ctl_ins_r2, mut_rnd_r2, ctl_rnd_r2)
+        diff_rnd_r2 = calculate_normalized_difference(mut_rnd_r2, ctl_rnd_r2, mut_rnd_r2, ctl_rnd_r2)
         
-        #放大倍率這段待確認是否需要
-        # === 關鍵步驟：自動計算放大倍率 (Auto-Scaling) ===
-        # 我們找出 Rep1 絕緣子曲線的最大值 (Peak)
-        current_peak = np.max(raw_diff_ins_r1)
+        # 2. 計算縮放因子 (Match Paper Scale)
+        # 論文圖中，紅色實線 (Insulators Rep 1) 的最高點大約在 Y=18 左右
+        TARGET_PEAK = 10.0
         
-        if current_peak > 0:
-            # 計算要把 Peak 變成 TARGET_MAX_Y (例如 10) 需要乘多少
-            final_multiplier = TARGET_MAX_Y / current_peak
-            print(f"   -> 偵測到原始最大值: {current_peak:.6f}")
-            print(f"   -> 自動計算放大倍率: {final_multiplier:.2f} 倍 (目標值: {TARGET_MAX_Y})")
+        # 找出我們目前數據中的最大值 (Peak)
+        current_peak = np.max(diff_ins_r1)
+        
+        # 計算縮放倍率
+        if current_peak != 0:
+            final_scale_factor = TARGET_PEAK / current_peak
         else:
-            final_multiplier = 1.0
-            print("   -> 警告：原始數值過低或為負，不進行縮放")
+            final_scale_factor = 1.0
+            
+        print(f"   -> 原始數據峰值: {current_peak:.4f}")
+        print(f"   -> 目標峰值: {TARGET_PEAK}")
+        print(f"   -> 應用縮放因子: {final_scale_factor:.6f}")
 
-        # 應用放大倍率到所有線條 (保持比例一致)
-        final_ins_r1 = raw_diff_ins_r1 * final_multiplier
-        final_ins_r2 = raw_diff_ins_r2 * final_multiplier
-        final_rnd_r1 = raw_diff_rnd_r1 * final_multiplier
-        final_rnd_r2 = raw_diff_rnd_r2 * final_multiplier
+        # 3. 應用縮放因子到所有線條
+        # 注意：必須乘上同一個因子，才能保持相對關係不變
+        final_ins_r1 = diff_ins_r1 * final_scale_factor
+        final_ins_r2 = diff_ins_r2 * final_scale_factor
+        final_rnd_r1 = diff_rnd_r1 * final_scale_factor
+        final_rnd_r2 = diff_rnd_r2 * final_scale_factor
 
         # D. 繪圖
         x_axis = np.arange(1, BINS_PER_SIDE + 1) * BIN_SIZE  / 1000 
         
         plt.figure(figsize=(7, 6))
         
+        # 繪製參考線
+        plt.axhline(0, color='gray', linestyle='--', linewidth=1)
+        
+
         # 實心線 (Insulators)
-        plt.plot(x_axis, final_ins_r1, 'r-o', markersize=6, label='Insulators, rep. 1')
-        plt.plot(x_axis, final_ins_r2, 'b-o', markersize=6, label='Insulators, rep. 2')
+        plt.plot(x_axis, final_ins_r1, 'r-o', markersize=5, label='Insulators (15% FDR), rep. 1')
+        plt.plot(x_axis, final_ins_r2, 'b-o', markersize=5, label='Insulators (15% FDR), rep. 2')
         
         # 空心線 (Control)
-        plt.plot(x_axis, final_rnd_r1, 'r-o', markerfacecolor='white', markersize=6, label='Control, rep. 1')
-        plt.plot(x_axis, final_rnd_r2, 'b-o', markerfacecolor='white', markersize=6, label='Control, rep. 2')
+        plt.plot(x_axis, final_rnd_r1, 'r-o', markerfacecolor='white', markersize=5, label='Control, rep. 1')
+        plt.plot(x_axis, final_rnd_r2, 'b-o', markerfacecolor='white', markersize=5, label='Control, rep. 2')
+        
+        # 設置 Y 軸範圍以匹配論文 (論文大約是 -15 到 20)
+        #plt.ylim(-30, 30)
+        
         my_ticks = [5] + list(range(25, 301, 25))
-        plt.xticks(my_ticks)
-        plt.axhline(0, color='gray', linestyle='--')
+        plt.xticks(my_ticks, rotation=45)
         plt.xlabel('Distance (kb)') 
-        plt.ylabel('Contact crossing difference')
-        plt.title('Fig 6B (Auto-Scaled to Match Paper)')
+        plt.ylabel('Contact crossing difference (Scaled)')
+        plt.title('Cp190-KO')
         plt.legend(frameon=False)
         plt.tight_layout()
-        plt.savefig('Fig6B_Final_Scaled.png')
+        plt.savefig('Fig6B_15%FDR_PY.png')
         plt.show()
-        print("\n繪圖完成！數值已調整為與論文一致。")
+        print("\n繪圖完成。")

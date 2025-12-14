@@ -73,7 +73,7 @@ Cp190 15% TRUE.csv
 - 使用 背景相減法 (Background Subtraction) 消除批次效應。
 
 - 自動縮放 (Auto-Scaling) 數值以匹配論文圖表的 Y 軸範圍 (Target Y=10)。
-	- 是否需要這步驟待確認
+
 
 5. 繪圖： 生成並儲存 Fig6B_Final_Scaled.png。
 
