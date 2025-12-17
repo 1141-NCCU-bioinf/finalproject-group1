@@ -5,7 +5,7 @@
 * 吳帛恩, 112207433
 * 林福田, 114971013
 * 彭珮蓉, 114753210
-* ...
+
 
 ### Demo 
 You might provide an example command or a few commands to reproduce your analysis, i.e., the following R script
