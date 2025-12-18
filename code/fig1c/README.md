@@ -109,3 +109,136 @@ The resulting dendrogram correctly shows:
 
 ## 5. Output
 The script generates a file named `/results/fig1c/Fig1C_Final_Normalized.png`, which is the reproduced dendrogram.
+
+# Figure 1C 重現實驗（全基因組 + 批次修正版）
+
+本專案完整記錄了對下列論文中 **Figure 1C** 的重現流程與方法：
+Kahn et al., 2023
+Topological screen identifies hundreds of Cp190- and CTCF-dependent Drosophila chromatin insulator elements
+
+本重現實驗的目標是建立 Hi-C 資料的階層式聚類樹狀圖（hierarchical clustering dendrogram），
+用以比較 **Control**、**Cp190-KO** 與 **CTCF-KO** 果蠅細胞株 在染色質拓撲結構上的相似性。
+
+與僅使用單一染色體或局部區域的做法不同，本專案採用 全基因組 Hi-C 資料整合，並結合 **ComBat 批次效應修正**，以解決重現過程中觀察到的 批次偏差與資料量不足問題，最終產生與原論文高度一致的結果。
+
+一、前置需求（Prerequisites）
+資料來源（Data Source）
+Hi-C 原始資料取自 Gene Expression Omnibus (GEO)：
+．GEO Accession: GSE198760
+．基因組版本: dm6
+．資料格式: .gcmap（HDF5）
+．原始解析度: 5 kb
+．分析解析度: 40 kb（與論文一致）
+
+| 樣本 | 條件 | GEO 編號 | 檔案名稱 |
+| :--- | :--- | :--- | :--- |
+| **Ras3_rep1** | Control | GSM5956402 | `GSM5956402_RAS3_rep1_05k_dm6.gcmap.gz` |
+| **Ras3_rep2** | Control | GSM5956403 | `GSM5956403_RAS3_rep2_05k_dm6.gcmap.gz` |
+| **CPR6_rep1** | Cp190-KO | GSM5956404 | `GSM5956404_CPR6_rep1_05k_dm6.gcmap.gz` |
+| **CPR6_rep2** | Cp190-KO | GSM5956405 | `GSM5956405_CPR6_rep2_05k_dm6.gcmap.gz` |
+| **CTCF_rep1** | CTCF-KO | GSM5956406 | `GSM5956406_CTCF_rep1_05k_dm6.gcmap.gz` |
+| **CTCF_rep2** | CTCF-KO | GSM5956407 | `GSM5956407_CTCF_rep2_05k_dm6.gcmap.gz` |
+
+分析環境與工具（Environment & Tools）
+1.Python ≥ 3.8
+必要套件：pip install numpy h5py
+2.R ≥ 4.2
+必要套件：install.packages(c("sva", "limma", "dendextend", "pheatmap"))
+
+二、整體分析策略（Overall Strategy）
+本重現流程遵循論文的核心統計與分析概念，並根據實際重現結果進行合理延伸：
+1.從 .gcmap 檔案中擷取 40 kb 全基因組 Hi-C 接觸矩陣
+2.僅保留 局部染色質交互作用
+    ．上三角矩陣
+    ．距離 ≤ 40 個 bins
+3.將主要染色體的資料進行 全基因組串接
+4.使用 ComBat 明確修正 replicate 批次效應
+5.計算 Spearman 相關係數
+6.使用 Average linkage (UPGMA) 進行階層式聚類
+7.視覺化調整樹狀圖排列順序以符合論文呈現
+8.提供熱力圖作為佐證分析
+
+此策略能有效解決僅使用部分基因組時，技術變異凌駕生物訊號的問題。
+
+三、重現步驟說明（Step-by-Step Reproduction Guide）
+Step 1：全基因組 40 kb Hi-C 矩陣擷取（Python）
+請見： hic_pre.py
+1.目的
+．直接讀取 HDF5 格式的 .gcmap 檔案
+．擷取 40 kb 解析度接觸矩陣
+．僅保留果蠅主要染色體
+．匯出為純文字格式供 R 使用
+
+2.設計重點
+．設定染色體白名單，避免非標準 contigs
+．自動處理 chr2L / 2L 等命名差異
+．採用全基因組資料避免抽樣偏誤
+
+輸出檔案
+<樣本名稱>_<染色體>_40k_matrix.txt
+
+範例：
+GSM5956402_RAS3_rep1_05k_dm6_chr2L_40k_matrix.txt
+
+Step 2：全基因組整合 + ComBat 批次修正（R）
+請見： hic_comBat_extractALL_nbLM.R
+1.動機說明
+在僅使用單一染色體或局部區段時，觀察到 replicate 聚類異常，顯示批次效應主導結果。
+因此本步驟同時：
+．增加資料量（全基因組）
+．明確建模並移除 replicate 批次效應
+
+2.資料處理流程
+．讀取所有染色體矩陣
+．篩選條件：
+    ．上三角矩陣
+    ．距離：0 < distance ≤ 40
+．Log2 轉換（加入 pseudocount）
+．批次設定：
+    ．Batch = Replicate（Rep1 / Rep2）
+    ．Model matrix 保留生物條件
+
+批次修正（ComBat）
+combat_data <- ComBat(
+  dat   = log2(data + 1),
+  batch = c(1,2,1,2,1,2),
+  mod   = model.matrix(~ group),
+  par.prior = TRUE
+)
+
+輸出
+．Spearman 相關係數矩陣
+．初步聚類樹狀圖（生物分群已正確）
+
+Step 3：最終視覺調整與論文級輸出（R）
+請見： hic_pic.R
+本步驟專注於 圖像細節的精準重現。
+1.視覺優化內容
+．強制樹狀圖排列順序：
+    ．Control → Cp190-KO → CTCF-KO
+．使用論文風格樣本標籤
+．Y 軸定義為 1 − Spearman ρ
+．微調邊界、字體與比例
+
+四、佐證分析（Supplementary Validation）
+1.直觀顯示：
+    ．同組 replicates 高相關
+    ．不同生物條件間清楚分離
+．格子內直接顯示數值
+
+五、最終結果與解讀（Results & Interpretation）
+在整合 全基因組 Hi-C 訊號 並進行 ComBat 批次修正 後，最終樹狀圖顯示：
+．Control replicates 清楚聚在一起
+．Cp190-KO replicates 清楚聚在一起
+．CTCF-KO replicates 清楚聚在一起
+．Control 與 KO 條件之間具有明顯分離
+此結果與 Kahn et al. (2023) Figure 1C 的生物結論高度一致，成功修正先前重現中出現的偏差。
+
+六、輸出檔案總覽（Output Summary）
+檔案	說明
+hic_1c.png	最終 Figure 1C 重現圖
+Figure_S1_Heatmap_Standard.png	Spearman 熱力圖
+
+七、結論（Conclusion）
+本專案顯示，忠實重現 Hi-C 聚類結果不僅需要正確的統計方法，更仰賴足夠的基因組覆蓋度與批次效應處理。
+透過 全基因組資料整合 與 ComBat 修正，成功重現原論文中 Figure 1C 所呈現的染色質拓撲結構差異。
